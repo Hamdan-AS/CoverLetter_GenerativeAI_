@@ -36,7 +36,6 @@ def validate_phone(phone):
     
     digits = re.sub(r"\D", "", phone)
     
-    # Total digits check (Country Code 1-3 + Subscriber max 12 = Max 15)
     if len(digits) < 2 or len(digits) > 15:
         return False, "Phone digits must be between 2 and 15 total."
     
@@ -67,7 +66,6 @@ def generate_pdf(template, color_name, details, content):
     name = details.get('name', 'Name')
 
     if "Traditional" in template:
-        # FIXED INDENTATION: Traditional Header
         pdf.set_font("times", "B", 24)
         pdf.cell(0, 15, name, ln=True, align="C")
         pdf.set_font("times", "", 10)
@@ -95,30 +93,27 @@ def generate_pdf(template, color_name, details, content):
         pdf.set_xy(80, 40); pdf.set_text_color(0, 0, 0); pdf.multi_cell(115, 5, content)
     
     else:
-    # --- TEMPLATE: SIDEBAR MINIMAL (IMPROVED) ---
-    pdf.set_fill_color(242, 242, 242); pdf.rect(0, 0, 75, 297, 'F')
-    pdf.set_fill_color(r, g, b); pdf.rect(0, 0, 75, 25, 'F')
-    pdf.ellipse(-10, 10, 95, 30, 'F')
+        # --- TEMPLATE: SIDEBAR MINIMAL (IMPROVED) ---
+        pdf.set_fill_color(242, 242, 242); pdf.rect(0, 0, 75, 297, 'F')
+        pdf.set_fill_color(r, g, b); pdf.rect(0, 0, 75, 25, 'F')
+        pdf.ellipse(-10, 10, 95, 30, 'F')
     
-    # Name Header
-    pdf.set_xy(5, 12); pdf.set_font("helvetica", "B", 18); pdf.set_text_color(255, 255, 255)
-    pdf.cell(65, 10, name, align="C")
+        pdf.set_xy(5, 12); pdf.set_font("helvetica", "B", 18); pdf.set_text_color(255, 255, 255)
+        pdf.cell(65, 10, name, align="C")
     
-    # Contact Details with Labels
-    pdf.set_xy(10, 50); pdf.set_text_color(r, g, b); pdf.set_font("helvetica", "B", 12)
-    pdf.cell(55, 8, "CONTACT DETAILS", ln=1)
+        pdf.set_xy(10, 50); pdf.set_text_color(r, g, b); pdf.set_font("helvetica", "B", 12)
+        pdf.cell(55, 8, "CONTACT DETAILS", ln=1)
     
-    pdf.set_text_color(0, 0, 0); pdf.set_font("helvetica", "", 10); pdf.set_xy(10, 60)
-    # Using labels ensures info isn't just "packed" and remains clear
-    contact_info = (
-        f"Email: {details.get('email')}\n\n"
-        f"Phone: {details.get('phone')}\n\n"
-        f"Address: {details.get('address')}"
-    )
-    pdf.multi_cell(55, 6, contact_info) # Increased line spacing to 6 for clarity
+        pdf.set_text_color(0, 0, 0); pdf.set_font("helvetica", "", 10); pdf.set_xy(10, 60)
+        contact_info = (
+            f"Email: {details.get('email')}\n\n"
+            f"Phone: {details.get('phone')}\n\n"
+            f"Address: {details.get('address')}")
+        pdf.multi_cell(55, 6, contact_info) 
     
-    # Main Body Position
-    pdf.set_xy(85, 15); pdf.multi_cell(110, 5, content)
+        pdf.set_xy(85, 15); pdf.multi_cell(110, 5, content)
+
+    # FIXED: return statement must be outside the if/else blocks to work for all templates
     return bytes(pdf.output())
 
 # --- 6. THE INPUT FORM ---
@@ -145,7 +140,6 @@ with st.form(key="robust_generation_form"):
 # --- 7. LOGIC WITH EDGE CASING ---
 if submit:
     error_found = False
-    
     if not all([u_name, u_email, u_phone, u_addr, u_pos, u_comp, u_skls]):
         st.error("All fields are required.")
         error_found = True
@@ -160,7 +154,6 @@ if submit:
     if not phone_valid:
         st.error(phone_err)
         error_found = True
-        
     elif not all(is_text_only(x) for x in [u_pos, u_comp, u_addr]):
         st.error("Position, Company, and Address must be text only.")
         error_found = True
@@ -168,7 +161,6 @@ if submit:
     if not error_found:
         with st.spinner("AI is crafting your letter..."):
             try:
-                # Optimized prompt to avoid redundant headers and brackets
                 prompt = (
                     f"Write a professional cover letter for {u_name} for the {u_pos} position at {u_comp}. "
                     f"Focus on these skills: {u_skls}. "
@@ -177,7 +169,6 @@ if submit:
                     "Start directly with 'Dear Hiring Manager,' and end with 'Sincerely,' followed by the name."
                 )
                 
-                # FIXED: Added missing closing parenthesis for client.chat.completions.create()
                 response = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt}]
