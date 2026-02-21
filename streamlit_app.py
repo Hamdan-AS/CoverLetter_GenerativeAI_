@@ -117,7 +117,7 @@ def generate_pdf(template, color_name, details, content):
     return bytes(pdf.output())
 
 # --- 6. THE INPUT FORM ---
-st.title("📄 Pro AI Cover Letter Designer")
+st.title("📄 Cover Letter Designer")
 
 with st.form(key="robust_generation_form"):
     c1, c2 = st.columns(2)
