@@ -29,23 +29,19 @@ def is_text_only(text):
 
 def validate_phone(phone):
     """
-    Validates:
-    1. Starts with '+'
-    2. Country Code: 1 to 3 digits
-    3. Subscriber: Max 12 digits
+    Validates: Starts with '+', Country Code: 1-3 digits, Subscriber: Max 12 digits.
     """
-    # Remove the '+' to check the digits
     if not phone.startswith('+'):
         return False, "Phone must start with '+'"
     
-    # Get only the digits
     digits = re.sub(r"\D", "", phone)
     
-    # Length check: Min 2 (1+1) to Max 15 (3+12)
+    # Total digits check (Country Code 1-3 + Subscriber max 12 = Max 15)
     if len(digits) < 2 or len(digits) > 15:
         return False, "Phone digits must be between 2 and 15 total."
     
     return True, ""
+
 def clean_for_pdf(text):
     """Replaces 'smart' characters that break FPDF standard fonts."""
     replacements = {
@@ -67,30 +63,26 @@ def generate_pdf(template, color_name, details, content):
     pdf = FPDF(unit="mm", format="A4")
     pdf.add_page()
     
-    # Handle character edge cases
     content = clean_for_pdf(content)
     name = details.get('name', 'Name')
 
     if "Traditional" in template:
-    # Header: Name and Contact centered
-    pdf.set_font("times", "B", 24)
-    pdf.cell(0, 15, name, ln=True, align="C")
-    pdf.set_font("times", "", 10)
-    pdf.cell(0, 5, f"{details.get('address')} | {details.get('phone')} | {details.get('email')}", ln=True, align="C")
-    
-    # Visual Separator
-    pdf.set_draw_color(r, g, b)
-    pdf.line(20, 35, 190, 35)
-    
-    # Body Placement
-    pdf.ln(15) # Adds breathing room after the line
-    pdf.set_font("times", "", 11)
-    pdf.set_left_margin(25)
-    pdf.set_right_margin(25)
-    pdf.multi_cell(0, 6, content) # '0' uses the full width between margins
+        # FIXED INDENTATION: Traditional Header
+        pdf.set_font("times", "B", 24)
+        pdf.cell(0, 15, name, ln=True, align="C")
+        pdf.set_font("times", "", 10)
+        pdf.cell(0, 5, f"{details.get('address')} | {details.get('phone')} | {details.get('email')}", ln=True, align="C")
+        
+        pdf.set_draw_color(r, g, b)
+        pdf.line(20, 35, 190, 35)
+        
+        pdf.ln(15) 
+        pdf.set_font("times", "", 11)
+        pdf.set_left_margin(25)
+        pdf.set_right_margin(25)
+        pdf.multi_cell(0, 6, content) 
 
     elif "Template 1" in template:
-        # --- TEMPLATE: SIDEBAR BOLD ---
         pdf.set_fill_color(r, g, b); pdf.rect(10, 0, 60, 15, 'F')
         pdf.set_xy(10, 20); pdf.set_font("helvetica", "B", 26)
         pdf.set_text_color(0, 0, 0); pdf.cell(60, 15, name.upper(), ln=1)
@@ -103,7 +95,6 @@ def generate_pdf(template, color_name, details, content):
         pdf.set_xy(80, 40); pdf.set_text_color(0, 0, 0); pdf.multi_cell(115, 5, content)
     
     else:
-        # --- TEMPLATE: SIDEBAR MINIMAL ---
         pdf.set_fill_color(242, 242, 242); pdf.rect(0, 0, 75, 297, 'F')
         pdf.set_fill_color(r, g, b); pdf.rect(0, 0, 75, 25, 'F')
         pdf.ellipse(-10, 10, 95, 30, 'F')
@@ -123,7 +114,7 @@ with st.form(key="robust_generation_form"):
     with c1:
         u_name = st.text_input("Full Name (Text Only)")
         u_email = st.text_input("Email (Must contain @)")
-        u_phone = st.text_input("Phone Number",placeholder="For EG: +92 7911123456")
+        u_phone = st.text_input("Phone Number", placeholder="For EG: +92 7911123456")
         u_addr = st.text_input("Address (Text Only)")
     with c2:
         u_pos = st.text_input("Target Position (Text Only)")
@@ -138,7 +129,6 @@ with st.form(key="robust_generation_form"):
 
 # --- 7. LOGIC WITH EDGE CASING ---
 if submit:
-    # Validation Logic
     error_found = False
     
     if not all([u_name, u_email, u_phone, u_addr, u_pos, u_comp, u_skls]):
@@ -150,9 +140,12 @@ if submit:
     elif "@" not in u_email:
         st.error("Invalid Email: Missing '@' symbol.")
         error_found = True
-    elif not validate_phone(u_phone):
-        st.error("Phone must contain '+' and 15  digits.")
+    
+    phone_valid, phone_err = validate_phone(u_phone)
+    if not phone_valid:
+        st.error(phone_err)
         error_found = True
+        
     elif not all(is_text_only(x) for x in [u_pos, u_comp, u_addr]):
         st.error("Position, Company, and Address must be text only.")
         error_found = True
@@ -160,17 +153,20 @@ if submit:
     if not error_found:
         with st.spinner("AI is crafting your letter..."):
             try:
+                # Optimized prompt to avoid redundant headers and brackets
                 prompt = (
-                     f"Write a professional cover letter for {u_name} for the {u_pos} position at {u_comp}. "
-                      f"Focus on these skills: {u_skls}. "
-                      "STRICT INSTRUCTION: Provide ONLY the body text. "
-                      "DO NOT include a date, addresses, or any square brackets like [Today's Date] or [City, State]. "
-                    "Start directly with 'Dear Hiring Manager,' and end with 'Sincerely,' followed by the name.")
+                    f"Write a professional cover letter for {u_name} for the {u_pos} position at {u_comp}. "
+                    f"Focus on these skills: {u_skls}. "
+                    "STRICT INSTRUCTION: Provide ONLY the body text. "
+                    "DO NOT include a date, addresses, or any square brackets like [Today's Date] or [City, State]. "
+                    "Start directly with 'Dear Hiring Manager,' and end with 'Sincerely,' followed by the name."
+                )
                 
+                # FIXED: Added missing closing parenthesis for client.chat.completions.create()
                 response = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt}]
-                
+                )
                 
                 st.session_state["letter_body"] = response.choices[0].message.content
                 st.session_state["form_data"] = {"name": u_name, "email": u_email, "phone": u_phone, "address": u_addr, "tmpl": t_style, "clr": t_color}
