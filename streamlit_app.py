@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import re
 from groq import Groq
 from fpdf import FPDF
 from datetime import datetime
@@ -7,22 +8,41 @@ from datetime import datetime
 # --- 1. PAGE SETUP ---
 st.set_page_config(page_title="AI Cover Letter Designer", page_icon="📄", layout="wide")
 
-# --- 2. SECURE API KEY (TOML via st.secrets) ---
+# --- 2. SECURE API KEY ---
 try:
-    # This pulls from the TOML secrets you set in the Streamlit Dashboard
     api_key = st.secrets["GROQ_API_KEY"]
     client = Groq(api_key=api_key)
 except Exception:
-    st.error("🔑 GROQ_API_KEY not found. Please add it to your Streamlit App Secrets in the dashboard.")
+    st.error("🔑 GROQ_API_KEY not found. Please add it to your Streamlit App Secrets.")
     st.stop()
 
-# --- 3. SESSION STATE INITIALIZATION ---
+# --- 3. SESSION STATE ---
 if "letter_body" not in st.session_state:
     st.session_state["letter_body"] = ""
 if "form_data" not in st.session_state:
     st.session_state["form_data"] = {}
 
-# --- 4. PDF GENERATION ENGINE ---
+# --- 4. VALIDATION & EDGE CASE HELPERS ---
+def is_text_only(text):
+    """Allows only letters and spaces."""
+    return bool(re.match(r"^[a-zA-Z\s]*$", text))
+
+def validate_phone(phone):
+    """Must contain '+' and exactly 11 digits."""
+    digits = re.sub(r"\D", "", phone) # Strip everything but numbers
+    return "+" in phone and len(digits) == 11
+
+def clean_for_pdf(text):
+    """Replaces 'smart' characters that break FPDF standard fonts."""
+    replacements = {
+        '\u2018': "'", '\u2019': "'", '\u201c': '"', '\u201d': '"',
+        '\u2013': "-", '\u2014': "-", '\u2026': "..."
+    }
+    for unicode_char, ascii_char in replacements.items():
+        text = text.replace(unicode_char, ascii_char)
+    return text
+
+# --- 5. PDF GENERATION ENGINE ---
 def generate_pdf(template, color_name, details, content):
     colors = {
         "Teal": (52, 165, 173), "Forest Green": (34, 139, 34),
@@ -32,11 +52,27 @@ def generate_pdf(template, color_name, details, content):
     
     pdf = FPDF(unit="mm", format="A4")
     pdf.add_page()
-    pdf.set_auto_page_break(auto=False)
     
+    # Handle character edge cases
+    content = clean_for_pdf(content)
     name = details.get('name', 'Name')
-    
-    if "Template 1" in template:
+
+    if "Traditional" in template:
+        # --- TEMPLATE: TRADITIONAL ---
+        pdf.set_font("times", "B", 24)
+        pdf.cell(0, 15, name, ln=True, align="C")
+        pdf.set_font("times", "", 10)
+        contact_line = f"{details.get('address')} | {details.get('phone')} | {details.get('email')}"
+        pdf.cell(0, 5, contact_line, ln=True, align="C")
+        pdf.set_draw_color(r, g, b)
+        pdf.line(20, 35, 190, 35) # Horizontal Rule
+        pdf.ln(20)
+        pdf.set_font("times", "", 11)
+        pdf.set_x(25)
+        pdf.multi_cell(160, 6, content)
+
+    elif "Template 1" in template:
+        # --- TEMPLATE: SIDEBAR BOLD ---
         pdf.set_fill_color(r, g, b); pdf.rect(10, 0, 60, 15, 'F')
         pdf.set_xy(10, 20); pdf.set_font("helvetica", "B", 26)
         pdf.set_text_color(0, 0, 0); pdf.cell(60, 15, name.upper(), ln=1)
@@ -47,7 +83,9 @@ def generate_pdf(template, color_name, details, content):
         pdf.set_font("helvetica", "", 9)
         pdf.set_xy(15, 60); pdf.multi_cell(45, 5, f"Email:\n{details.get('email')}\n\nPhone:\n{details.get('phone')}\n\nAddress:\n{details.get('address')}")
         pdf.set_xy(80, 40); pdf.set_text_color(0, 0, 0); pdf.multi_cell(115, 5, content)
+    
     else:
+        # --- TEMPLATE: SIDEBAR MINIMAL ---
         pdf.set_fill_color(242, 242, 242); pdf.rect(0, 0, 75, 297, 'F')
         pdf.set_fill_color(r, g, b); pdf.rect(0, 0, 75, 25, 'F')
         pdf.ellipse(-10, 10, 95, 30, 'F')
@@ -59,54 +97,66 @@ def generate_pdf(template, color_name, details, content):
 
     return bytes(pdf.output())
 
-# --- 5. THE INPUT FORM ---
-st.title("📄 Professional AI Cover Letter Designer")
+# --- 6. THE INPUT FORM ---
+st.title("📄 Pro AI Cover Letter Designer")
 
-# UNIQUE KEY "final_version_form" prevents the Duplicate Form error
-with st.form(key="final_version_form"):
+with st.form(key="robust_generation_form"):
     c1, c2 = st.columns(2)
     with c1:
-        u_name = st.text_input("Full Name", "Jane Fitz")
-        u_email = st.text_input("Email", "jane@example.com")
-        u_phone = st.text_input("Phone", "(222) 345-6789")
-        u_addr = st.text_input("Address", "Scranton, PA")
+        u_name = st.text_input("Full Name (Text Only)")
+        u_email = st.text_input("Email (Must contain @)")
+        u_phone = st.text_input("Phone (Must contain + and 11 digits)", placeholder="+12345678901")
+        u_addr = st.text_input("Address (Text Only)")
     with c2:
-        u_pos = st.text_input("Target Position")
-        u_comp = st.text_input("Company Name")
-        u_skls = st.text_area("Key Skills & Experience")
+        u_pos = st.text_input("Target Position (Text Only)")
+        u_comp = st.text_input("Company Name (Text Only)")
+        u_skls = st.text_area("Key Skills (Text Only)")
     
     st.subheader("Design & Style")
-    t_style = st.selectbox("Template Style", ["Template 1 - Sidebar Bold", "Template 2 - Sidebar Minimal"])
+    t_style = st.selectbox("Template Style", ["Traditional - Classic Times", "Template 1 - Sidebar Bold", "Template 2 - Sidebar Minimal"])
     t_color = st.selectbox("Color Theme", ["Teal", "Forest Green", "Navy Blue", "Burgundy", "Charcoal"])
     
-    submit = st.form_submit_button("Generate Professional Letter", type="primary")
+    submit = st.form_submit_button("Generate & Validate", type="primary")
 
-# --- 6. GENERATION LOGIC ---
+# --- 7. LOGIC WITH EDGE CASING ---
 if submit:
-    if not u_pos or not u_comp:
-        st.warning("Please provide the Position and Company.")
-    else:
-        with st.spinner("Llama 3.3 is crafting your letter..."):
+    # Validation Logic
+    error_found = False
+    
+    if not all([u_name, u_email, u_phone, u_addr, u_pos, u_comp, u_skls]):
+        st.error("All fields are required.")
+        error_found = True
+    elif not is_text_only(u_name):
+        st.error("Full Name must only contain letters.")
+        error_found = True
+    elif "@" not in u_email:
+        st.error("Invalid Email: Missing '@' symbol.")
+        error_found = True
+    elif not validate_phone(u_phone):
+        st.error("Phone must contain '+' and exactly 11 digits.")
+        error_found = True
+    elif not all(is_text_only(x) for x in [u_pos, u_comp, u_addr]):
+        st.error("Position, Company, and Address must be text only.")
+        error_found = True
+
+    if not error_found:
+        with st.spinner("AI is crafting your letter..."):
             try:
-                # UPDATED MODEL: llama-3.3-70b-versatile
-                prompt = f"Write a professional cover letter for {u_name} applying for {u_pos} at {u_comp}. Highlight these skills: {u_skls}."
-                
+                prompt = f"Write a professional cover letter for {u_name} applying for {u_pos} at {u_comp}. Skills: {u_skls}."
                 response = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt}]
                 )
                 
-                # Store the result
                 st.session_state["letter_body"] = f"Hiring Manager\n{u_comp}\n\n{datetime.now().strftime('%B %d, %Y')}\n\n{response.choices[0].message.content}"
                 st.session_state["form_data"] = {"name": u_name, "email": u_email, "phone": u_phone, "address": u_addr, "tmpl": t_style, "clr": t_color}
-                
             except Exception as e:
                 st.error(f"Groq API Error: {str(e)}")
 
-# --- 7. REVIEW & DOWNLOAD ---
+# --- 8. REVIEW & DOWNLOAD ---
 if st.session_state.get("letter_body"):
     st.divider()
-    final_text = st.text_area("Edit your letter:", value=st.session_state["letter_body"], height=350)
+    final_text = st.text_area("Final Edit:", value=st.session_state["letter_body"], height=350)
     
     pdf_out = generate_pdf(
         st.session_state["form_data"]["tmpl"], 
@@ -118,7 +168,6 @@ if st.session_state.get("letter_body"):
     st.download_button(
         label="Download Professional PDF", 
         data=pdf_out, 
-        file_name=f"{u_name.replace(' ', '_')}_Cover_Letter.pdf", 
-        mime="application/pdf",
-        type="primary"
+        file_name=f"{u_name.replace(' ', '_')}_CoverLetter.pdf", 
+        mime="application/pdf"
     )
