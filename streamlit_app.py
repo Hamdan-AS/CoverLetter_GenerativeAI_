@@ -28,10 +28,24 @@ def is_text_only(text):
     return bool(re.match(r"^[a-zA-Z\s]*$", text))
 
 def validate_phone(phone):
-    """Must contain '+' and exactly 11 digits."""
-    digits = re.sub(r"\D", "", phone) # Strip everything but numbers
-    return "+" in phone and len(digits) == 11
-
+    """
+    Validates:
+    1. Starts with '+'
+    2. Country Code: 1 to 3 digits
+    3. Subscriber: Max 12 digits
+    """
+    # Remove the '+' to check the digits
+    if not phone.startswith('+'):
+        return False, "Phone must start with '+'"
+    
+    # Get only the digits
+    digits = re.sub(r"\D", "", phone)
+    
+    # Length check: Min 2 (1+1) to Max 15 (3+12)
+    if len(digits) < 2 or len(digits) > 15:
+        return False, "Phone digits must be between 2 and 15 total."
+    
+    return True, ""
 def clean_for_pdf(text):
     """Replaces 'smart' characters that break FPDF standard fonts."""
     replacements = {
@@ -105,7 +119,7 @@ with st.form(key="robust_generation_form"):
     with c1:
         u_name = st.text_input("Full Name (Text Only)")
         u_email = st.text_input("Email (Must contain @)")
-        u_phone = st.text_input("Phone (Must contain + and 11 digits)", placeholder="+12345678901")
+        u_phone = st.text_input("Phone Number",placeholder="For EG: +92 7911123456")
         u_addr = st.text_input("Address (Text Only)")
     with c2:
         u_pos = st.text_input("Target Position (Text Only)")
