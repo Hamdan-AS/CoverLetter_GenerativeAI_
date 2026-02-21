@@ -115,7 +115,7 @@ with st.form("cv_form"):
     with c1:
         u_name = st.text_input("Full Name")
         u_email = st.text_input("Email Address")
-        u_phone = st.text_input("Phone Number", placeholder="+923324979753")
+        u_phone = st.text_input("Phone Number", placeholder="+9293123456789")
         u_addr = st.text_input("City, Country", placeholder="Karachi, Pakistan")
         u_link = st.text_input("LinkedIn URL", placeholder="https://www.linkedin.com/in/yourprofile")
     with c2:
