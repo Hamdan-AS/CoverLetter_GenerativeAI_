@@ -1,4 +1,4 @@
-import streamlit as st
+ streamlit as st
 import os
 import re
 from groq import Groq
@@ -72,18 +72,22 @@ def generate_pdf(template, color_name, details, content):
     name = details.get('name', 'Name')
 
     if "Traditional" in template:
-        # --- TEMPLATE: TRADITIONAL ---
-        pdf.set_font("times", "B", 24)
-        pdf.cell(0, 15, name, ln=True, align="C")
-        pdf.set_font("times", "", 10)
-        contact_line = f"{details.get('address')} | {details.get('phone')} | {details.get('email')}"
-        pdf.cell(0, 5, contact_line, ln=True, align="C")
-        pdf.set_draw_color(r, g, b)
-        pdf.line(20, 35, 190, 35) # Horizontal Rule
-        pdf.ln(20)
-        pdf.set_font("times", "", 11)
-        pdf.set_x(25)
-        pdf.multi_cell(160, 6, content)
+    # Header: Name and Contact centered
+    pdf.set_font("times", "B", 24)
+    pdf.cell(0, 15, name, ln=True, align="C")
+    pdf.set_font("times", "", 10)
+    pdf.cell(0, 5, f"{details.get('address')} | {details.get('phone')} | {details.get('email')}", ln=True, align="C")
+    
+    # Visual Separator
+    pdf.set_draw_color(r, g, b)
+    pdf.line(20, 35, 190, 35)
+    
+    # Body Placement
+    pdf.ln(15) # Adds breathing room after the line
+    pdf.set_font("times", "", 11)
+    pdf.set_left_margin(25)
+    pdf.set_right_margin(25)
+    pdf.multi_cell(0, 6, content) # '0' uses the full width between margins
 
     elif "Template 1" in template:
         # --- TEMPLATE: SIDEBAR BOLD ---
@@ -156,13 +160,19 @@ if submit:
     if not error_found:
         with st.spinner("AI is crafting your letter..."):
             try:
-                prompt = f"Write a professional cover letter for {u_name} applying for {u_pos} at {u_comp}. Skills: {u_skls}."
+                prompt = (
+                     f"Write a professional cover letter for {u_name} for the {u_pos} position at {u_comp}. "
+                      f"Focus on these skills: {u_skls}. "
+                      "STRICT INSTRUCTION: Provide ONLY the body text. "
+                      "DO NOT include a date, addresses, or any square brackets like [Today's Date] or [City, State]. "
+                    "Start directly with 'Dear Hiring Manager,' and end with 'Sincerely,' followed by the name.")
+                
                 response = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt}]
-                )
                 
-                st.session_state["letter_body"] = f"Hiring Manager\n{u_comp}\n\n{datetime.now().strftime('%B %d, %Y')}\n\n{response.choices[0].message.content}"
+                
+                st.session_state["letter_body"] = response.choices[0].message.content
                 st.session_state["form_data"] = {"name": u_name, "email": u_email, "phone": u_phone, "address": u_addr, "tmpl": t_style, "clr": t_color}
             except Exception as e:
                 st.error(f"Groq API Error: {str(e)}")
