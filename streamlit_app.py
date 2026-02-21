@@ -95,15 +95,30 @@ def generate_pdf(template, color_name, details, content):
         pdf.set_xy(80, 40); pdf.set_text_color(0, 0, 0); pdf.multi_cell(115, 5, content)
     
     else:
-        pdf.set_fill_color(242, 242, 242); pdf.rect(0, 0, 75, 297, 'F')
-        pdf.set_fill_color(r, g, b); pdf.rect(0, 0, 75, 25, 'F')
-        pdf.ellipse(-10, 10, 95, 30, 'F')
-        pdf.set_xy(5, 12); pdf.set_font("helvetica", "B", 18); pdf.set_text_color(255, 255, 255); pdf.cell(65, 10, name, align="C")
-        pdf.set_xy(10, 50); pdf.set_text_color(r, g, b); pdf.set_font("helvetica", "B", 14); pdf.cell(55, 8, "Contact Info", ln=1)
-        pdf.set_text_color(0, 0, 0); pdf.set_font("helvetica", "", 10); pdf.set_xy(10, 60)
-        pdf.multi_cell(55, 6, f"{details.get('email')}\n{details.get('phone')}\n{details.get('address')}")
-        pdf.set_xy(85, 15); pdf.multi_cell(110, 5, content)
-
+    # --- TEMPLATE: SIDEBAR MINIMAL (IMPROVED) ---
+    pdf.set_fill_color(242, 242, 242); pdf.rect(0, 0, 75, 297, 'F')
+    pdf.set_fill_color(r, g, b); pdf.rect(0, 0, 75, 25, 'F')
+    pdf.ellipse(-10, 10, 95, 30, 'F')
+    
+    # Name Header
+    pdf.set_xy(5, 12); pdf.set_font("helvetica", "B", 18); pdf.set_text_color(255, 255, 255)
+    pdf.cell(65, 10, name, align="C")
+    
+    # Contact Details with Labels
+    pdf.set_xy(10, 50); pdf.set_text_color(r, g, b); pdf.set_font("helvetica", "B", 12)
+    pdf.cell(55, 8, "CONTACT DETAILS", ln=1)
+    
+    pdf.set_text_color(0, 0, 0); pdf.set_font("helvetica", "", 10); pdf.set_xy(10, 60)
+    # Using labels ensures info isn't just "packed" and remains clear
+    contact_info = (
+        f"Email: {details.get('email')}\n\n"
+        f"Phone: {details.get('phone')}\n\n"
+        f"Address: {details.get('address')}"
+    )
+    pdf.multi_cell(55, 6, contact_info) # Increased line spacing to 6 for clarity
+    
+    # Main Body Position
+    pdf.set_xy(85, 15); pdf.multi_cell(110, 5, content)
     return bytes(pdf.output())
 
 # --- 6. THE INPUT FORM ---
