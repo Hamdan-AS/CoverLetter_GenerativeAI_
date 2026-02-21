@@ -147,7 +147,7 @@ if submit:
         st.error("Invalid Email: Missing '@' symbol.")
         error_found = True
     elif not validate_phone(u_phone):
-        st.error("Phone must contain '+' and exactly 11 digits.")
+        st.error("Phone must contain '+' and 15  digits.")
         error_found = True
     elif not all(is_text_only(x) for x in [u_pos, u_comp, u_addr]):
         st.error("Position, Company, and Address must be text only.")
