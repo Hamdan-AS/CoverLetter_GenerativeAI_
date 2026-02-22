@@ -116,7 +116,7 @@ st.title("📄 Professional AI Cover Letter Designer")
 with st.form("cv_form"):
     c1, c2 = st.columns(2)
     with c1:
-        u_name = st.text_input("Full Name (Text Only)")
+        u_name = st.text_input("First Name (Text Only)")
         u_email = st.text_input("Email Address (Must contain @)")
         u_phone = st.text_input("Phone Number", placeholder="+923001234567")
         u_addr = st.text_input("City, Country", placeholder="Karachi, Pakistan")
