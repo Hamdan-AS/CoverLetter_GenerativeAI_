@@ -120,7 +120,7 @@ with st.form("cv_form"):
         u_email = st.text_input("Email Address (Must contain @)")
         u_phone = st.text_input("Phone Number", placeholder="+923001234567")
         u_addr = st.text_input("City, Country", placeholder="Karachi, Pakistan")
-        u_link = st.text_input("LinkedIn URL", placeholder="https://www.linkedin.com/in/yourprofile")
+        u_link = st.text_input("LinkedIn URL (optional) ", placeholder="https://www.linkedin.com/in/yourprofile")
     with c2:
         u_pos = st.text_input("Target Position (Text Only)")
         u_comp = st.text_input("Company Name (Text Only)")
