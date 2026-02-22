@@ -171,7 +171,7 @@ if submit:
                     f"In the closing paragraph, strictly include: 'I can be reached at {u_phone} or {u_email} to discuss further.' "
                     f"End with 'Sincerely, {u_name}'."
                 )
-                response = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role": "user", "content": prompt}])
+                response = client.chat.completions.create(model="GPT-OSS 120B", messages=[{"role": "user", "content": prompt}])
                 st.session_state.letter_body = response.choices[0].message.content
                 st.session_state.gen_count += 1
                 st.session_state.form_data = {"name":u_name, "email":u_email, "phone":u_phone, "address":u_addr, "company":u_comp, "linkedin":u_link, "tmpl":t_style, "clr":t_color}
