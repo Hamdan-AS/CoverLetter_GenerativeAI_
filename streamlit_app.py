@@ -50,7 +50,7 @@ def clean_for_pdf(text):
 
 # --- 5. PDF GENERATION ENGINE ---
 def generate_pdf(template, color_name, details, content):
-    colors = {"Teal": (52, 165, 173), "Navy Blue": (0, 51, 102), "Charcoal": (54, 69, 79), "Burgundy": (128, 0, 32)}
+    colors = {"Teal": (52, 165, 173), "Navy Blue": (0, 51, 102), "Charcoal": (54, 69, 79)}
     r, g, b = colors.get(color_name, (52, 165, 173))
     
     pdf = FPDF(unit="mm", format="A4")
@@ -81,50 +81,88 @@ def generate_pdf(template, color_name, details, content):
         pdf.ln(10); pdf.set_font("times", "B", 11)
         pdf.cell(0, 6, "Attachment: Resume", ln=True)
 
-    elif "Template 1 - Sidebar Bold" in template:
-        # Sidebar rectangle
+    elif "Template 1" in template:
+        # Template 1: Left Sidebar based on image provided
+        # Light grey-blue sidebar
+        pdf.set_fill_color(244, 247, 249)
+        pdf.rect(0, 0, 65, 297, 'F')
+        # Bottom colored footer bar
         pdf.set_fill_color(r, g, b)
-        pdf.rect(0, 0, 70, 297, 'F')
-        # Name in sidebar
-        pdf.set_xy(5, 20); pdf.set_font("helvetica", "B", 20); pdf.set_text_color(255, 255, 255)
-        pdf.multi_cell(60, 10, details['name'].upper(), align="L")
-        # Contact heading
-        pdf.set_xy(5, 60); pdf.set_font("helvetica", "B", 12)
-        pdf.cell(60, 10, "CONTACT", ln=True)
-        pdf.set_font("helvetica", "", 10)
-        pdf.set_x(5)
-        contact_info = f"Email:\n{details['email']}\n\nPhone:\n{details['phone']}\n\nAddress:\n{details['address']}"
+        pdf.rect(0, 287, 210, 10, 'F')
+        
+        # Sidebar Header
+        pdf.set_xy(10, 20)
+        pdf.set_text_color(r, g, b)
+        pdf.set_font("helvetica", "B", 14)
+        pdf.cell(45, 8, "Personal details", ln=1)
+        pdf.ln(2)
+        
+        # Sidebar Content Fields
+        pdf.set_text_color(0, 0, 0)
+        fields = [("Name", details['name']), ("Email address", details['email']), 
+                  ("Phone number", details['phone']), ("Address", details['address'])]
         if details.get('linkedin'):
-            contact_info += f"\n\nLinkedIn:\n{details['linkedin']}"
-        pdf.multi_cell(60, 5, contact_info)
-        # Main Body
-        pdf.set_text_color(0, 0, 0); pdf.set_xy(80, 20); pdf.set_font("helvetica", "", 10)
-        pdf.cell(0, 6, today, ln=True)
-        pdf.ln(5); pdf.set_font("helvetica", "B", 11)
-        pdf.cell(0, 6, "Hiring Manager", ln=True)
-        pdf.set_font("helvetica", "", 11)
-        pdf.cell(0, 6, details['company'], ln=True)
-        pdf.ln(10)
-        pdf.set_x(80)
-        pdf.multi_cell(110, 6, content)
-        pdf.ln(10); pdf.set_x(80); pdf.set_font("helvetica", "B", 10)
-        pdf.cell(0, 6, "Attachment: Resume", ln=True)
+            fields.append(("LinkedIn", details['linkedin']))
+            
+        for label, val in fields:
+            pdf.set_x(10)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(45, 5, label, ln=1)
+            pdf.set_x(10)
+            pdf.set_font("helvetica", "", 10)
+            pdf.multi_cell(45, 5, val)
+            pdf.ln(3)
 
-    else: # Template 2 - Sidebar Minimal
-        pdf.set_fill_color(242, 242, 242); pdf.rect(0, 0, 75, 297, 'F')
-        pdf.set_fill_color(r, g, b); pdf.rect(0, 0, 75, 25, 'F')
-        pdf.ellipse(-10, 10, 95, 30, 'F')
-        pdf.set_xy(5, 12); pdf.set_font("helvetica", "B", 18); pdf.set_text_color(255, 255, 255)
-        pdf.cell(65, 10, details['name'], align="C")
-        pdf.set_xy(10, 50); pdf.set_text_color(r, g, b); pdf.set_font("helvetica", "B", 12)
-        pdf.cell(55, 8, "CONTACT DETAILS", ln=1)
-        pdf.set_text_color(0, 0, 0); pdf.set_font("helvetica", "", 9); pdf.set_xy(10, 60)
-        c_info = f"Email: {details['email']}\n\nPhone: {details['phone']}\n\nAddress: {details['address']}"
+        # Main Body
+        pdf.set_xy(75, 20)
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("helvetica", "", 10)
+        pdf.cell(0, 5, "Hiring Manager", ln=1)
+        pdf.set_x(75)
+        pdf.cell(0, 5, details['company'], ln=1)
+        pdf.ln(5)
+        pdf.set_x(75)
+        pdf.cell(0, 5, today, ln=1)
+        pdf.ln(5)
+        pdf.set_x(75)
+        pdf.multi_cell(120, 5, content)
+        pdf.ln(8)
+        pdf.set_x(75)
+        pdf.cell(0, 5, "Attachment: Resume", ln=1)
+
+    else: 
+        # Template 2: Top Dark Header based on image provided
+        # Top Header Bar
+        pdf.set_fill_color(r, g, b)
+        pdf.rect(0, 0, 210, 35, 'F')
+        
+        # Name
+        pdf.set_xy(20, 10)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("helvetica", "B", 24)
+        pdf.cell(0, 10, details['name'], ln=1)
+        
+        # Contact Info row under name
+        pdf.set_x(20)
+        pdf.set_font("helvetica", "", 9)
+        pdf.set_text_color(220, 220, 220)
+        c_parts = f"Email: {details['email']}   |   Phone: {details['phone']}   |   Location: {details['address']}"
         if details.get('linkedin'):
-            c_info += f"\n\nLinkedIn:\n{details['linkedin']}"
-        pdf.multi_cell(55, 5, c_info)
-        pdf.set_xy(80, 20); pdf.set_font("helvetica", "", 10)
-        pdf.multi_cell(115, 5, f"{today}\n\nTo: Hiring Manager\n{details['company']}\n\n{content}\n\nAttachment: Resume")
+            c_parts += f"   |   LinkedIn: {details['linkedin']}"
+        pdf.cell(0, 6, c_parts, ln=1)
+        
+        # Main Body
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_xy(20, 45)
+        pdf.set_font("helvetica", "", 10)
+        pdf.cell(0, 5, "Hiring Manager", ln=1)
+        pdf.cell(0, 5, details['company'], ln=1)
+        pdf.ln(5)
+        pdf.cell(0, 5, today, ln=1)
+        pdf.ln(5)
+        pdf.multi_cell(170, 5, content)
+        pdf.ln(8)
+        pdf.cell(0, 5, "Attachment: Resume", ln=1)
 
     return bytes(pdf.output())
 
@@ -144,8 +182,8 @@ with st.form("cv_form"):
         u_comp = st.text_input("Company Name (Text Only)")
         u_skls = st.text_area("Skills & Experience (Text Only)")
     
-    t_style = st.selectbox("Template Style", ["Traditional - Classic Times", "Template 1 - Sidebar Bold", "Template 2 - Sidebar Minimal"])
-    t_color = st.selectbox("Color Theme", ["Teal", "Navy Blue", "Charcoal", "Burgundy"])
+    t_style = st.selectbox("Template Style", ["Traditional - Classic Times", "Template 1 - Left Sidebar", "Template 2 - Top Header"])
+    t_color = st.selectbox("Color Theme", ["Teal", "Navy Blue", "Charcoal"])
     submit = st.form_submit_button("Generate Professional Letter", type="primary")
 
 # --- 7. LOGIC & RATE LIMITING ---
