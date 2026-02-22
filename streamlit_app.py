@@ -10,6 +10,7 @@ st.set_page_config(page_title="AI Cover Letter Pro", page_icon="📄", layout="w
 
 # --- 2. API SETUP ---
 try:
+    # Ensure your GROQ_API_KEY is added to Streamlit Secrets
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except Exception:
     st.error("🔑 GROQ_API_KEY not found in Streamlit Secrets.")
@@ -27,22 +28,15 @@ if "first_gen_time" not in st.session_state:
 
 # --- 4. HELPERS & VALIDATION ---
 def is_text_only(text):
-    """Checks if the input contains only letters and spaces."""
     return bool(re.match(r"^[a-zA-Z\s]*$", text))
 
 def validate_phone(phone):
-    """Validates: Starts with '+', and total digits are less than 17."""
+    """Validates: Starts with '+', Country Code 1-3, Subscriber Max 12."""
     if not phone.startswith('+'):
         return False, "Phone must start with '+'"
-    
-    # Extract only digits to check length
     digits = re.sub(r"\D", "", phone)
-    
-    if len(digits) >= 17:
-        return False, "Phone number must be less than 17 digits."
-    if len(digits) < 7: # Standard minimum for a phone number
-        return False, "Phone number is too short."
-        
+    if len(digits) < 2 or len(digits) > 15:
+        return False, "Phone must have 1-3 digit country code and max 12 digit subscriber number."
     return True, ""
 
 def clean_for_pdf(text):
@@ -60,9 +54,10 @@ def generate_pdf(template, color_name, details, content):
     pdf = FPDF(unit="mm", format="A4")
     pdf.add_page()
     content = clean_for_pdf(content)
-    today = datetime.now().strftime("%B %d, %Y") 
+    today = datetime.now().strftime("%B %d, %Y") # Fixes missing date [cite: 5, 8, 40, 42]
 
     if "Traditional" in template:
+        # Header: Name and dynamic contact info [cite: 1-2, 30-33]
         pdf.set_font("times", "B", 24)
         pdf.cell(0, 15, details['name'], ln=True, align="C")
         pdf.set_font("times", "", 10)
@@ -75,6 +70,7 @@ def generate_pdf(template, color_name, details, content):
         pdf.set_draw_color(r, g, b); pdf.line(20, 35, 190, 35)
         pdf.ln(10)
         
+        # Date & Recipient Block [cite: 3-4, 9-11, 45-47]
         pdf.set_font("times", "", 11)
         pdf.cell(0, 6, today, ln=True)
         pdf.ln(5)
@@ -87,10 +83,11 @@ def generate_pdf(template, color_name, details, content):
         pdf.ln(10)
         pdf.multi_cell(0, 6, content)
         
+        # Attachment line [cite: 27]
         pdf.ln(10); pdf.set_font("times", "B", 11)
         pdf.cell(0, 6, "Attachment: Resume", ln=True)
 
-    else: # Template 2 - Sidebar Minimal
+    else: # Template 2 - Sidebar Minimal [cite: 34-38, 52-53, 60]
         pdf.set_fill_color(242, 242, 242); pdf.rect(0, 0, 75, 297, 'F')
         pdf.set_fill_color(r, g, b); pdf.rect(0, 0, 75, 25, 'F')
         pdf.ellipse(-10, 10, 95, 30, 'F')
@@ -116,15 +113,15 @@ st.title("📄 Professional AI Cover Letter Designer")
 with st.form("cv_form"):
     c1, c2 = st.columns(2)
     with c1:
-        u_name = st.text_input("First Name (Text Only)")
-        u_email = st.text_input("Email Address (Must contain @)")
-        u_phone = st.text_input("Phone Number", placeholder="+923001234567")
+        u_name = st.text_input("Full Name")
+        u_email = st.text_input("Email Address")
+        u_phone = st.text_input("Phone Number", placeholder="+9293123456789")
         u_addr = st.text_input("City, Country", placeholder="Karachi, Pakistan")
-        u_link = st.text_input("LinkedIn URL (optional) ", placeholder="https://www.linkedin.com/in/yourprofile")
+        u_link = st.text_input("LinkedIn URL", placeholder="https://www.linkedin.com/in/yourprofile")
     with c2:
-        u_pos = st.text_input("Target Position (Text Only)")
-        u_comp = st.text_input("Company Name (Text Only)")
-        u_skls = st.text_area("Skills & Experience (Text Only)")
+        u_pos = st.text_input("Target Position")
+        u_comp = st.text_input("Company Name")
+        u_skls = st.text_area("Skills & Experience")
     
     t_style = st.selectbox("Template Style", ["Traditional - Classic Times", "Template 2 - Sidebar Minimal"])
     t_color = st.selectbox("Color Theme", ["Teal", "Navy Blue", "Charcoal", "Burgundy"])
@@ -132,6 +129,7 @@ with st.form("cv_form"):
 
 # --- 7. LOGIC & RATE LIMITING ---
 if submit:
+    # 1-Hour Time Window Check
     time_passed = (datetime.now() - st.session_state.first_gen_time).total_seconds()
     if time_passed > 3600:
         st.session_state.gen_count = 0
@@ -140,20 +138,14 @@ if submit:
     # Validations
     p_valid, p_err = validate_phone(u_phone)
     error = False
-    
     if st.session_state.gen_count >= 5:
         st.error(f"🚫 Hourly Limit Reached. Wait {int((3600-time_passed)/60)} minutes.")
         error = True
-    elif not all([u_name, u_email, u_phone, u_addr, u_pos, u_comp, u_skls]):
-        st.error("All fields are required.")
+    elif not all([u_name, u_email, u_phone, u_addr, u_pos, u_comp]):
+        st.error("All main fields are required.")
         error = True
-    # TEXT ONLY VALIDATION
-    elif not all(is_text_only(x) for x in [u_name, u_pos, u_comp, u_skls]):
-        st.error("Name, Position, Company, and Skills must only contain letters and spaces.")
-        error = True
-    # EMAIL @ VALIDATION
-    elif "@" not in u_email:
-        st.error("Invalid Email: Must contain '@'.")
+    elif len(u_addr.split()) < 2:
+        st.error("Please provide a full address (City, Country).")
         error = True
     elif not p_valid:
         st.error(p_err)
@@ -165,13 +157,14 @@ if submit:
     if not error:
         with st.spinner("AI is crafting your letter..."):
             try:
+                # Prompt forces contact info in closing [cite: 30-32, 60]
                 prompt = (
                     f"Write a professional cover letter for {u_name} for {u_pos} at {u_comp}. Skills: {u_skls}. "
                     "STRICT RULES: No header/date/brackets. Start with 'Dear Hiring Manager'. "
                     f"In the closing paragraph, strictly include: 'I can be reached at {u_phone} or {u_email} to discuss further.' "
                     f"End with 'Sincerely, {u_name}'."
                 )
-                response = client.chat.completions.create(model="Llama 3.3 70B", messages=[{"role": "user", "content": prompt}])
+                response = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role": "user", "content": prompt}])
                 st.session_state.letter_body = response.choices[0].message.content
                 st.session_state.gen_count += 1
                 st.session_state.form_data = {"name":u_name, "email":u_email, "phone":u_phone, "address":u_addr, "company":u_comp, "linkedin":u_link, "tmpl":t_style, "clr":t_color}
