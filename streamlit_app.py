@@ -34,15 +34,11 @@ def validate_phone(phone):
     """Validates: Starts with '+', and total digits are less than 17."""
     if not phone.startswith('+'):
         return False, "Phone must start with '+'"
-    
-    # Extract only digits to check length
     digits = re.sub(r"\D", "", phone)
-    
     if len(digits) >= 17:
         return False, "Phone number must be less than 17 digits."
-    if len(digits) < 7: # Standard minimum for a phone number
+    if len(digits) < 7:
         return False, "Phone number is too short."
-        
     return True, ""
 
 def clean_for_pdf(text):
@@ -66,15 +62,12 @@ def generate_pdf(template, color_name, details, content):
         pdf.set_font("times", "B", 24)
         pdf.cell(0, 15, details['name'], ln=True, align="C")
         pdf.set_font("times", "", 10)
-        
         contact_parts = [details['address'], details['phone'], details['email']]
         if details.get('linkedin'):
             contact_parts.append(f"LinkedIn: {details['linkedin']}")
         pdf.cell(0, 5, " | ".join(contact_parts), ln=True, align="C")
-        
         pdf.set_draw_color(r, g, b); pdf.line(20, 35, 190, 35)
         pdf.ln(10)
-        
         pdf.set_font("times", "", 11)
         pdf.cell(0, 6, today, ln=True)
         pdf.ln(5)
@@ -83,11 +76,38 @@ def generate_pdf(template, color_name, details, content):
         pdf.set_font("times", "", 11)
         pdf.cell(0, 6, details['company'], ln=True)
         pdf.cell(0, 6, "Company Headquarters", ln=True)
-        
         pdf.ln(10)
         pdf.multi_cell(0, 6, content)
-        
         pdf.ln(10); pdf.set_font("times", "B", 11)
+        pdf.cell(0, 6, "Attachment: Resume", ln=True)
+
+    elif "Template 1 - Sidebar Bold" in template:
+        # Sidebar rectangle
+        pdf.set_fill_color(r, g, b)
+        pdf.rect(0, 0, 70, 297, 'F')
+        # Name in sidebar
+        pdf.set_xy(5, 20); pdf.set_font("helvetica", "B", 20); pdf.set_text_color(255, 255, 255)
+        pdf.multi_cell(60, 10, details['name'].upper(), align="L")
+        # Contact heading
+        pdf.set_xy(5, 60); pdf.set_font("helvetica", "B", 12)
+        pdf.cell(60, 10, "CONTACT", ln=True)
+        pdf.set_font("helvetica", "", 10)
+        pdf.set_x(5)
+        contact_info = f"Email:\n{details['email']}\n\nPhone:\n{details['phone']}\n\nAddress:\n{details['address']}"
+        if details.get('linkedin'):
+            contact_info += f"\n\nLinkedIn:\n{details['linkedin']}"
+        pdf.multi_cell(60, 5, contact_info)
+        # Main Body
+        pdf.set_text_color(0, 0, 0); pdf.set_xy(80, 20); pdf.set_font("helvetica", "", 10)
+        pdf.cell(0, 6, today, ln=True)
+        pdf.ln(5); pdf.set_font("helvetica", "B", 11)
+        pdf.cell(0, 6, "Hiring Manager", ln=True)
+        pdf.set_font("helvetica", "", 11)
+        pdf.cell(0, 6, details['company'], ln=True)
+        pdf.ln(10)
+        pdf.set_x(80)
+        pdf.multi_cell(110, 6, content)
+        pdf.ln(10); pdf.set_x(80); pdf.set_font("helvetica", "B", 10)
         pdf.cell(0, 6, "Attachment: Resume", ln=True)
 
     else: # Template 2 - Sidebar Minimal
@@ -99,12 +119,10 @@ def generate_pdf(template, color_name, details, content):
         pdf.set_xy(10, 50); pdf.set_text_color(r, g, b); pdf.set_font("helvetica", "B", 12)
         pdf.cell(55, 8, "CONTACT DETAILS", ln=1)
         pdf.set_text_color(0, 0, 0); pdf.set_font("helvetica", "", 9); pdf.set_xy(10, 60)
-        
         c_info = f"Email: {details['email']}\n\nPhone: {details['phone']}\n\nAddress: {details['address']}"
         if details.get('linkedin'):
             c_info += f"\n\nLinkedIn:\n{details['linkedin']}"
         pdf.multi_cell(55, 5, c_info)
-        
         pdf.set_xy(80, 20); pdf.set_font("helvetica", "", 10)
         pdf.multi_cell(115, 5, f"{today}\n\nTo: Hiring Manager\n{details['company']}\n\n{content}\n\nAttachment: Resume")
 
@@ -120,13 +138,13 @@ with st.form("cv_form"):
         u_email = st.text_input("Email Address (Must contain @)")
         u_phone = st.text_input("Phone Number", placeholder="+923001234567")
         u_addr = st.text_input("City, Country", placeholder="Karachi, Pakistan")
-        u_link = st.text_input("LinkedIn URL  (Optional) ", placeholder="https://www.linkedin.com/in/yourprofile")
+        u_link = st.text_input("LinkedIn URL (Optional)", placeholder="https://www.linkedin.com/in/yourprofile")
     with c2:
         u_pos = st.text_input("Target Position (Text Only)")
         u_comp = st.text_input("Company Name (Text Only)")
         u_skls = st.text_area("Skills & Experience (Text Only)")
     
-    t_style = st.selectbox("Template Style", ["Traditional - Classic Times", "Template 2 - Sidebar Minimal"])
+    t_style = st.selectbox("Template Style", ["Traditional - Classic Times", "Template 1 - Sidebar Bold", "Template 2 - Sidebar Minimal"])
     t_color = st.selectbox("Color Theme", ["Teal", "Navy Blue", "Charcoal", "Burgundy"])
     submit = st.form_submit_button("Generate Professional Letter", type="primary")
 
@@ -137,7 +155,6 @@ if submit:
         st.session_state.gen_count = 0
         st.session_state.first_gen_time = datetime.now()
 
-    # Validations
     p_valid, p_err = validate_phone(u_phone)
     error = False
     
@@ -147,11 +164,9 @@ if submit:
     elif not all([u_name, u_email, u_phone, u_addr, u_pos, u_comp, u_skls]):
         st.error("All fields are required.")
         error = True
-    # TEXT ONLY VALIDATION
     elif not all(is_text_only(x) for x in [u_name, u_pos, u_comp, u_skls]):
         st.error("Name, Position, Company, and Skills must only contain letters and spaces.")
         error = True
-    # EMAIL @ VALIDATION
     elif "@" not in u_email:
         st.error("Invalid Email: Must contain '@'.")
         error = True
